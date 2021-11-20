@@ -1,6 +1,6 @@
 from PIL import Image, ImageDraw, ImageFont
 import paho.mqtt.client as mqtt
-
+from threading import Thread
 from time import sleep
 from sys import stdout
 from math import floor
@@ -9,11 +9,6 @@ import requests
 
 class Display:
     def __init__(self):
-        # assign pil image
-        self.font = './font/TerminusTTF-4.49.1.ttf'
-        self.big_font = ImageFont.truetype(self.font, size=16)
-        self.small_font = ImageFont.truetype(self.font, size=12)
-
         self.state = {
             'title': 'Je Mama',
             'artist': '- Wiebe',
@@ -22,6 +17,13 @@ class Display:
             'duration': (69 * 60) * 2,
             'volume': 100
         }
+
+        self.show_volume = None
+        self.next_frame = True
+
+        self.font = './font/TerminusTTF-4.49.1.ttf'
+        self.big_font = ImageFont.truetype(self.font, size=16)
+        self.small_font = ImageFont.truetype(self.font, size=12)
 
         self.t_scroll = 0
         self.a_scroll = 0
@@ -36,23 +38,50 @@ class Display:
 
         self.client.subscribe('djo/player/#')
 
+        self.thread = Thread(target=self.loop)
+        self.thread.start()
+
+    def loop(self):
         while True:
-            self.frame()
+            if self.show_volume:
+                self.show_volume = False
+                self.volume()
+            else:
+                self.frame()
+            
+            # sleep(.05)
 
     def mqtt_handle(self, _c, _u, msg):
-        self.state[msg.topic.split('/')[-1]] = msg.payload.decode()
+        topic = msg.topic.split('/')[-1]
+        self.state[topic] = msg.payload.decode()
+
+        if topic == 'volume':
+            if self.show_volume is None:
+                self.show_volume = False
+            else:
+                self.show_volume = True
+
+    def volume(self):
+        image = Image.new('RGB', (120, 48), 'black')
+
+        draw = ImageDraw.Draw(image)
+
+        progress = int(self.state['volume']) / 100
+        draw.line([(0, 0), (int(120 * progress), 0)], fill='red', width=92)
+
+        self.output(image)
+        sleep(2)
 
     def frame(self):
         image = Image.new('RGB', (120, 48), 'black')
 
         draw = ImageDraw.Draw(image)
-        font = ImageFont.truetype(self.font, size=15)
 
         title = self.state['title']
         artist = self.state['artist']
 
-        t_width = font.getsize(title)[0]
-        a_width = font.getsize(artist)[0]
+        t_width = self.big_font.getsize(title)[0]
+        a_width = self.big_font.getsize(artist)[0]
 
         p_text = '- paused -'
         if self.state['status'] == 'play':
@@ -68,9 +97,6 @@ class Display:
 
         progress = (int(self.state['seek']) / 1000) / int(self.state['duration'])
         draw.line([(0, 46), (int(119 * progress), 46)], fill='green', width=2)
-
-        progress = int(self.state['volume']) / 100
-        draw.line([(0, 0), (int(119 * progress), 0)], fill='red', width=1)
 
         if t_width >= 120:
             self.t_scroll += 2.5
@@ -108,6 +134,17 @@ class Display:
         barr.append(0)
 
         stdout.buffer.write(barr)
+
+# class Output:
+#     def __init__(self):
+        # self.font = './font/TerminusTTF-4.49.1.ttf'
+        # self.big_font = ImageFont.truetype(self.font, size=16)
+        # self.small_font = ImageFont.truetype(self.font, size=12)
+
+        # self.t_scroll = 0
+        # self.a_scroll = 0
+    
+
 
 if __name__ == '__main__':
     disp = Display()
