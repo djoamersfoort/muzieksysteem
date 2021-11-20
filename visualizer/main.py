@@ -32,6 +32,9 @@ class Display:
         self.client = mqtt.Client()
         self.client.on_message = self.mqtt_handle
 
+        self.image = Image.new('RGB', (120, 48), 'black')
+        self.draw = ImageDraw.Draw(self.image)
+
     def start(self):
         self.client.connect('mqtt.bitlair.nl')
         self.client.loop_start()
@@ -62,20 +65,15 @@ class Display:
                 self.show_volume = True
 
     def volume(self):
-        image = Image.new('RGB', (120, 48), 'black')
-
-        draw = ImageDraw.Draw(image)
-
         progress = int(self.state['volume']) / 100
-        draw.line([(0, 0), (int(120 * progress), 0)], fill='red', width=92)
+        self.draw.line([(0, 0), (int(120 * progress), 0)], fill='red', width=92)
 
-        self.output(image)
+        self.output()
         sleep(2)
 
     def frame(self):
-        image = Image.new('RGB', (120, 48), 'black')
-
-        draw = ImageDraw.Draw(image)
+        # self.image.putdata([(0, 0, 0)] * 120 * 48)
+        self.draw.rectangle(((0, 0), (120, 48)), fill="black")
 
         title = self.state['title']
         artist = self.state['artist']
@@ -93,34 +91,34 @@ class Display:
             p_text += ':' + ('0' if seconds < 10 else '')
             p_text += str(seconds)
 
-        draw.text((60, 46), p_text, fill='green', anchor='mb', font=self.small_font)
+        self.draw.text((60, 46), p_text, fill='green', anchor='mb', font=self.small_font)
 
         progress = (int(self.state['seek']) / 1000) / int(self.state['duration'])
-        draw.line([(0, 46), (int(119 * progress), 46)], fill='green', width=2)
+        self.draw.line([(0, 46), (int(119 * progress), 46)], fill='green', width=2)
 
         if t_width >= 120:
             self.t_scroll += 2.5
             if self.t_scroll >= t_width + 150:
                 self.t_scroll = 0
             
-            draw.text((120 - self.t_scroll, 8), title, fill='orange', anchor='lm', font=self.big_font)
+            self.draw.text((120 - self.t_scroll, 8), title, fill='orange', anchor='lm', font=self.big_font)
         else:
-            draw.text((60, 8), title, fill='orange', anchor='mm', font=self.big_font)
+            self.draw.text((60, 8), title, fill='orange', anchor='mm', font=self.big_font)
 
         if a_width >= 120:
             self.a_scroll += 2.5
             if self.a_scroll >= a_width + 150:
                 self.a_scroll = 0
             
-            draw.text((120 - self.a_scroll, 22), artist, fill='orange', anchor='lm', font=self.big_font)
+            self.draw.text((120 - self.a_scroll, 22), artist, fill='orange', anchor='lm', font=self.big_font)
         else:
-            draw.text((60, 22), artist, fill='orange', anchor='mm', font=self.big_font)
+            self.draw.text((60, 22), artist, fill='orange', anchor='mm', font=self.big_font)
 
-        self.output(image)
+        self.output()
     
-    def output(self, image):
+    def output(self):
         # [[r, g, b], [r, g, b]] -> [r, g, b, r, g, b]
-        data = np.asarray(image, dtype='uint8').flatten()
+        data = np.asarray(self.image, dtype='uint8').flatten()
         # [r, g, b, r, g, b] -> [r, g, r, g]
         data = np.delete(data, np.arange(2, data.size, 3))
 
