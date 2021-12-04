@@ -1,0 +1,13 @@
+[Unit]
+Description=MQTT
+After=network.target
+Wants=network.target
+
+[Service]
+WorkingDirectory=/home/djo/muzieksysteem/mqtt
+ExecStart=/usr/bin/python3 /home/djo/muzieksysteem/mqtt/vol-to-mqtt.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

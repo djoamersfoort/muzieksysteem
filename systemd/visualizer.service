@@ -1,0 +1,13 @@
+[Unit]
+Description=Visualizer
+After=network.target
+Wants=network.target
+
+[Service]
+WorkingDirectory=/home/djo/muzieksysteem/visualizer
+ExecStart=/usr/bin/python3 /home/djo/muzieksysteem/visualizer/main.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
