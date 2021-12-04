@@ -141,6 +141,7 @@ class Display:
 
         self.encoder = Encode()
         self.mqtt = Volumio(self.message)
+        self.has_drawn = False
         self.state = None
 
         self.title = TextRender(terminus, 12, 'orange')
@@ -170,9 +171,7 @@ class Display:
         draw = ImageDraw.Draw(image)
 
         draw.text((60, 24), 'DOEI!', fill='orange', font=font, anchor='mm')
-        
         self.encoder.output(image)
-        exit(0)
 
     def start(self):
         self.mqtt.connect('mqtt.bitlair.nl')
@@ -185,8 +184,11 @@ class Display:
         while True:
             if self.state == True:
                 self.frame()
+                self.has_drawn = True
             elif self.state == False:
-                self.exiting()
+                if self.has_drawn:
+                    self.exiting()
+                exit(0)
             # time.sleep(0.05)
         
     def frame(self):
