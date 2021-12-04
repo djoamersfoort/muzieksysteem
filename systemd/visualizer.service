@@ -7,7 +7,7 @@ Wants=network.target
 WorkingDirectory=/home/djo/muzieksysteem/visualizer
 ExecStart=/usr/bin/bash /home/djo/muzieksysteem/visualizer/run.sh
 Restart=always
-RestartSec=10
+RestartSec=60
 User=djo
 
 [Install]

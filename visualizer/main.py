@@ -1,6 +1,6 @@
 from PIL import Image, ImageDraw, ImageFont
 import paho.mqtt.client as mqtt
-from sys import stdout, stderr
+from sys import stdout
 from math import floor
 import numpy as np
 import time
@@ -38,7 +38,7 @@ class TextRender:
             draw.text((w, 0), text, fill=self.color, anchor='lt', font=self.font)
         else:
             # draw middle
-            draw.text((self.width / 2, 0), text, fill=self.color, anchor='mt', font=self.font)
+            draw.text((60, 0), text, fill=self.color, anchor='mt', font=self.font)
 
     # draws image on line y onwards
     def draw(self, image, y):
@@ -110,6 +110,7 @@ class Volumio:
         self.client.subscribe('djo/player/album')
         self.client.subscribe('djo/player/seek')
         self.client.subscribe('djo/player/duration')
+        self.client.subscribe('bitlair/state/djo')
 
 # Decoder
 class Encode:
@@ -140,6 +141,7 @@ class Display:
 
         self.encoder = Encode()
         self.mqtt = Volumio(self.message)
+        self.state = None
 
         self.title = TextRender(terminus, 12, 'orange')
         self.artist = TextRender(terminus, 12, 'green')
@@ -149,21 +151,29 @@ class Display:
     def message(self, _c, _u, msg):
         topic = msg.topic.split('/')[-1]
         payload = msg.payload.decode()
-        stderr.write(f"{topic} => {payload}\n")
 
         if topic in ['title', 'artist', 'album']:
             getattr(self, topic).text(payload)
             if self.album.value == self.title.value:
                 self.album.text('')
 
-
         if topic == 'seek':
             self.progress.set(seek=int(int(payload) / 1000))
         if topic == 'duration':
             self.progress.set(duration=int(payload))
+        if topic == 'djo':
+            self.state = payload == 'open'
+    
+    def exiting(self):
+        font = ImageFont.truetype(terminus, size=18)
+        image = Image.new('RGB', (120, 48), 'black')
+        draw = ImageDraw.Draw(self.image)
+        draw.text((60, 24), 'DOEI!', fill='orange', font=font)
+        
+        self.encoder.output(self.image)
+        exit(0)
 
     def start(self):
-        stderr.write("Display driver started.\n")
         self.mqtt.connect('mqtt.bitlair.nl')
 
         self.title.text('Verbinden')
@@ -172,7 +182,10 @@ class Display:
         self.progress.set(seek=69, duration=420)
 
         while True:
-            self.frame()
+            if self.state == True:
+                self.frame()
+            elif self.state == False:
+                self.exiting()
             # time.sleep(0.05)
         
     def frame(self):
