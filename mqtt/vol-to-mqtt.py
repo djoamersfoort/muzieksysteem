@@ -65,6 +65,11 @@ def compareResponseAndState(name, new_value):
     else:
         logging.debug("{} not changed (value: {})".format(name, new_value))
 
+def getValue(data, name, default):
+    if name not in data:
+        return default
+    return data[name]
+
 global config
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -113,27 +118,17 @@ while True:
         responsedata = r.json()
     except json.decoder.JSONDecodeError:
         logging.error("Failed to decode response from volumio as JSON")
-    
-    if not(responsedata['artist']):
-        artist = ' ' # handle unknown artist names properly
-    else:
-        artist = responsedata['artist']
-    
-    if 'position' not in responsedata:
-        position = 0
-    else:
-        position = responsedata['position']
 
-    compareResponseAndState('status', responsedata['status'])
-    compareResponseAndState('title', responsedata['title'])
-    compareResponseAndState('artist', artist)
-    compareResponseAndState('album', responsedata['album'])
-    compareResponseAndState('volume', responsedata['volume'])
-    compareResponseAndState('seek', responsedata['seek'])
-    compareResponseAndState('duration', responsedata['duration'])
-    compareResponseAndState('service', responsedata['service'])
-    compareResponseAndState('stream', responsedata['stream'])
-    compareResponseAndState('mute', responsedata['mute'])
-    compareResponseAndState('uri', responsedata['uri'])
-    compareResponseAndState('albumart', responsedata['albumart'])
-    compareResponseAndState('position', position)
+    compareResponseAndState('status', getValue(responsedata, 'status', ''))
+    compareResponseAndState('title', getValue(responsedata, 'title', ''))
+    compareResponseAndState('artist', getValue(responsedata, 'artist', ''))
+    compareResponseAndState('album', getValue(responsedata, 'album', ''))
+    compareResponseAndState('volume', getValue(responsedata, 'volume', 0))
+    compareResponseAndState('seek', getValue(responsedata, 'seek', 0))
+    compareResponseAndState('duration', getValue(responsedata, 'duration', 0))
+    compareResponseAndState('service', getValue(responsedata, 'service', ''))
+    compareResponseAndState('stream', getValue(responsedata, 'stream', ''))
+    compareResponseAndState('mute', getValue(responsedata, 'mute', False))
+    compareResponseAndState('uri', getValue(responsedata, 'uri', ''))
+    compareResponseAndState('albumart', getValue(responsedata, 'albumart', ''))
+    compareResponseAndState('position', getValue(responsedata, 'position', 0))

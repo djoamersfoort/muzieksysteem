@@ -1,129 +1,121 @@
 from PIL import Image, ImageDraw, ImageFont
 import paho.mqtt.client as mqtt
-from threading import Thread
-from time import sleep
-from sys import stdout
+from sys import stdout, stderr
 from math import floor
 import numpy as np
-import requests
+import time
 
-class Display:
-    def __init__(self):
-        self.state = {
-            'title': 'Je Mama',
-            'artist': '- Wiebe',
-            'status': 'play',
-            'seek': (69 * 60) * 1000,
-            'duration': (69 * 60) * 2,
-            'volume': 100
-        }
+# Render scrolling text
+class TextRender:
+    def __init__(self, uri, size, color):
+        self.color = color
+        self.font = ImageFont.truetype(uri, size=size)
+        self.value = ''
+        self.x = 0
 
-        self.show_volume = None
-        self.next_frame = True
+    def text(self, text):
+        self.value = text
+        self.x = 0
 
-        self.font = './font/TerminusTTF-4.49.1.ttf'
-        self.big_font = ImageFont.truetype(self.font, size=16)
-        self.small_font = ImageFont.truetype(self.font, size=12)
+        w, h = self.font.getsize(text)
+        self.scroll = w >= 120
+        self.width = 120
 
-        self.t_scroll = 0
-        self.a_scroll = 0
+        if self.scroll:
+            text += '  '
+            w, h = self.font.getsize(text)
+            self.width += w
 
-        # subscribe to player mqtt
+        self.height = h
+
+        self.image = Image.new('RGB', (self.width, h), 'black')
+        draw = ImageDraw.Draw(self.image)
+        
+        if self.scroll:
+            # draw left half
+            draw.text((0, 0), text, fill=self.color, anchor='lt', font=self.font)
+            # draw right half
+            draw.text((w, 0), text, fill=self.color, anchor='lt', font=self.font)
+        else:
+            # draw middle
+            draw.text((self.width / 2, 0), text, fill=self.color, anchor='mt', font=self.font)
+
+    # draws image on line y onwards
+    def draw(self, image, y):
+        area = self.image.crop((self.x, 0, self.width, self.height))
+        image.paste(area, (0, y))
+
+        # scroll forward if applicable        
+        if self.scroll:
+            self.x += 1
+            if self.x >= self.width - 120:
+                self.x = 0
+
+# Bar renderer
+def time_text(seek):
+    seconds = seek
+    minutes = floor(seconds / 60)
+    seconds -= minutes * 60
+
+    p_text = str(minutes)
+    p_text += ':' + ('0' if seconds < 10 else '')
+    p_text += str(seconds)
+    
+    return p_text
+
+class Progress:
+    def __init__(self, uri, color):
+        self.font = ImageFont.truetype(uri, size=12)
+        self.color = color
+
+        self.seek = 0
+        self.duration = 0
+    
+    def set(self, seek=None, duration=None):
+        self.seek = seek or self.seek
+        self.duration = duration or self.duration
+
+        self.image = Image.new('RGB', (120, 12), 'black')
+        draw = ImageDraw.Draw(self.image)
+
+        # draw "bar"
+        if self.duration > 0:
+            progress = (self.seek / self.duration)
+        else:
+            progress = 0
+
+        width = int(120 * progress)
+        draw.line(((0, 10), (width, 10)), width=2, fill=self.color)
+
+        # draw start and end
+        draw.text((0, 10), time_text(self.seek), fill=self.color, font=self.font, anchor='lb')
+        draw.text((120, 10), time_text(self.duration), fill=self.color, font=self.font, anchor='rb')
+
+    def draw(self, image, y):
+        area = self.image.crop((0, 0, 120, 12))
+        image.paste(area, (0, y))      
+
+# MQTT Connection
+class Volumio:
+    def __init__(self, handle):
         self.client = mqtt.Client()
-        self.client.on_message = self.mqtt_handle
+        self.client.on_message = handle
 
-        self.image = Image.new('RGB', (120, 48), 'black')
-
-    def start(self):
-        self.client.connect('mqtt.bitlair.nl')
+    def connect(self, host):
+        self.client.connect(host)
         self.client.loop_start()
 
-        self.client.subscribe('djo/player/#')
+        self.client.subscribe('djo/player/title')
+        self.client.subscribe('djo/player/artist')
+        self.client.subscribe('djo/player/album')
+        self.client.subscribe('djo/player/seek')
+        self.client.subscribe('djo/player/duration')
 
-        self.thread = Thread(target=self.loop)
-        self.thread.start()
-
-    def loop(self):
-        while True:
-            if self.show_volume:
-                self.show_volume = False
-                self.volume()
-            else:
-                self.frame()
-            
-            # sleep(.05)
-
-    def mqtt_handle(self, _c, _u, msg):
-        topic = msg.topic.split('/')[-1]
-        self.state[topic] = msg.payload.decode()
-
-        if topic == 'volume':
-            if self.show_volume is None:
-                self.show_volume = False
-            else:
-                self.show_volume = True
-
-    def volume(self):
-        image = self.image.copy()
-        draw = ImageDraw.Draw(image)
-
-        progress = int(self.state['volume']) / 100
-        draw.line([(0, 0), (int(120 * progress), 0)], fill='red', width=92)
-
-        self.output(image)
-        sleep(2)
-
-    def frame(self):
-        image = self.image.copy()
-        draw = ImageDraw.Draw(image)
-
-        draw.rectangle(((0, 0), (120, 48)), fill="black")
-
-        title = self.state['title']
-        artist = self.state['artist']
-
-        t_width = self.big_font.getsize(title)[0]
-        a_width = self.big_font.getsize(artist)[0]
-
-        p_text = '- paused -'
-        if self.state['status'] == 'play':
-            seconds = int(int(self.state['seek']) / 1000)
-            minutes = floor(seconds / 60)
-            seconds -= minutes * 60
-
-            p_text = str(minutes)
-            p_text += ':' + ('0' if seconds < 10 else '')
-            p_text += str(seconds)
-
-        draw.text((60, 46), p_text, fill='green', anchor='mb', font=self.small_font)
-
-        progress = (int(self.state['seek']) / 1000) / int(self.state['duration'])
-        draw.line([(0, 46), (int(119 * progress), 46)], fill='green', width=2)
-
-        if t_width >= 120:
-            self.t_scroll += 2.5
-            if self.t_scroll >= t_width + 150:
-                self.t_scroll = 0
-            
-            draw.text((120 - self.t_scroll, 8), title, fill='orange', anchor='lm', font=self.big_font)
-        else:
-            draw.text((60, 8), title, fill='orange', anchor='mm', font=self.big_font)
-
-        if a_width >= 120:
-            self.a_scroll += 2.5
-            if self.a_scroll >= a_width + 150:
-                self.a_scroll = 0
-            
-            draw.text((120 - self.a_scroll, 22), artist, fill='orange', anchor='lm', font=self.big_font)
-        else:
-            draw.text((60, 22), artist, fill='orange', anchor='mm', font=self.big_font)
-
-        self.output(image)
-    
+# Decoder
+class Encode:
     def output(self, image):
         # [[r, g, b], [r, g, b]] -> [r, g, b, r, g, b]
         data = np.asarray(image, dtype='uint8').flatten()
-        image.close()
 
         # [r, g, b, r, g, b] -> [r, g, r, g]
         data = np.delete(data, np.arange(2, data.size, 3))
@@ -139,16 +131,57 @@ class Display:
 
         stdout.buffer.write(barr)
 
-# class Output:
-#     def __init__(self):
-        # self.font = './font/TerminusTTF-4.49.1.ttf'
-        # self.big_font = ImageFont.truetype(self.font, size=16)
-        # self.small_font = ImageFont.truetype(self.font, size=12)
+# Main Display class
+terminus = './font/TerminusTTF-4.49.1.ttf'
 
-        # self.t_scroll = 0
-        # self.a_scroll = 0
-    
+class Display:
+    def __init__(self):
+        self.image = Image.new('RGB', (120, 48))
 
+        self.encoder = Encode()
+        self.mqtt = Volumio(self.message)
+
+        self.title = TextRender(terminus, 12, 'orange')
+        self.artist = TextRender(terminus, 12, 'green')
+        self.album = TextRender(terminus, 12, 'green')
+        self.progress = Progress(terminus, 'red')
+
+    def message(self, _c, _u, msg):
+        topic = msg.topic.split('/')[-1]
+        payload = msg.payload.decode()
+        stderr.write(f"{topic} => {payload}\n")
+
+        if topic in ['title', 'artist', 'album']:
+            getattr(self, topic).text(payload)
+            if self.album.value == self.title.value:
+                self.album.text('')
+
+
+        if topic == 'seek':
+            self.progress.set(seek=int(int(payload) / 1000))
+        if topic == 'duration':
+            self.progress.set(duration=int(payload))
+
+    def start(self):
+        stderr.write("Display driver started.\n")
+        self.mqtt.connect('mqtt.bitlair.nl')
+
+        self.title.text('Verbinden')
+        self.artist.text('met Volumio')
+        self.album.text('... ... ...')
+        self.progress.set(seek=69, duration=420)
+
+        while True:
+            self.frame()
+            # time.sleep(0.05)
+        
+    def frame(self):
+        self.title.draw(self.image, 0)
+        self.artist.draw(self.image, 12)
+        self.album.draw(self.image, 24)
+        self.progress.draw(self.image, 36)
+
+        self.encoder.output(self.image)
 
 if __name__ == '__main__':
     disp = Display()
