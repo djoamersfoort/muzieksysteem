@@ -168,7 +168,7 @@ class Display:
         font = ImageFont.truetype(terminus, size=18)
         image = Image.new('RGB', (120, 48), 'black')
         draw = ImageDraw.Draw(self.image)
-        draw.text((60, 24), 'DOEI!', fill='orange', font=font)
+        draw.text((60, 24), 'DOEI!', fill='orange', font=font, anchor='mm')
         
         self.encoder.output(self.image)
         exit(0)
