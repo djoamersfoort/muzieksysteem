@@ -5,7 +5,7 @@ Wants=network.target
 
 [Service]
 WorkingDirectory=/home/djo/muzieksysteem/visualizer
-ExecStart=/usr/bin/python3 /home/djo/muzieksysteem/visualizer/main.py
+ExecStart=/usr/bin/bash /home/djo/muzieksysteem/visualizer/run.sh
 Restart=always
 RestartSec=10
 User=djo
