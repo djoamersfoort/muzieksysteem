@@ -135,6 +135,9 @@ class Encode:
 # Main Display class
 terminus = './font/TerminusTTF-4.49.1.ttf'
 
+def strip(txt:str):
+    return "".join([t for t in txt if t.isalpha()])
+
 class Display:
     def __init__(self):
         self.image = Image.new('RGB', (120, 48))
@@ -155,7 +158,7 @@ class Display:
 
         if topic in ['title', 'artist', 'album']:
             getattr(self, topic).text(payload)
-            if self.album.value == self.title.value:
+            if strip(self.album.value) == strip(self.title.value):
                 self.album.text('')
 
         if topic == 'seek':
