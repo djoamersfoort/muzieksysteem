@@ -65,11 +65,6 @@ def compareResponseAndState(name, new_value):
     else:
         logging.debug("{} not changed (value: {})".format(name, new_value))
 
-def getValue(data, name, default):
-    if name not in data:
-        return default
-    return data[name]
-
 global config
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -119,16 +114,16 @@ while True:
     except json.decoder.JSONDecodeError:
         logging.error("Failed to decode response from volumio as JSON")
 
-    compareResponseAndState('status', getValue(responsedata, 'status', ''))
-    compareResponseAndState('title', getValue(responsedata, 'title', ''))
-    compareResponseAndState('artist', getValue(responsedata, 'artist', ''))
-    compareResponseAndState('album', getValue(responsedata, 'album', ''))
-    compareResponseAndState('volume', getValue(responsedata, 'volume', 0))
-    compareResponseAndState('seek', getValue(responsedata, 'seek', 0))
-    compareResponseAndState('duration', getValue(responsedata, 'duration', 0))
-    compareResponseAndState('service', getValue(responsedata, 'service', ''))
-    compareResponseAndState('stream', getValue(responsedata, 'stream', ''))
-    compareResponseAndState('mute', getValue(responsedata, 'mute', False))
-    compareResponseAndState('uri', getValue(responsedata, 'uri', ''))
-    compareResponseAndState('albumart', getValue(responsedata, 'albumart', ''))
-    compareResponseAndState('position', getValue(responsedata, 'position', 0))
+    compareResponseAndState('status', getattr(responsedata, 'status', ''))
+    compareResponseAndState('title', getattr(responsedata, 'title', ''))
+    compareResponseAndState('artist', getattr(responsedata, 'artist', ''))
+    compareResponseAndState('album', getattr(responsedata, 'album', ''))
+    compareResponseAndState('volume', getattr(responsedata, 'volume', 0))
+    compareResponseAndState('seek', getattr(responsedata, 'seek', 0))
+    compareResponseAndState('duration', getattr(responsedata, 'duration', 0))
+    compareResponseAndState('service', getattr(responsedata, 'service', ''))
+    compareResponseAndState('stream', getattr(responsedata, 'stream', ''))
+    compareResponseAndState('mute', getattr(responsedata, 'mute', False))
+    compareResponseAndState('uri', getattr(responsedata, 'uri', ''))
+    compareResponseAndState('albumart', getattr(responsedata, 'albumart', ''))
+    compareResponseAndState('position', getattr(responsedata, 'position', 0))

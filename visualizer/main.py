@@ -88,8 +88,8 @@ class Progress:
         draw.line(((0, 10), (width, 10)), width=2, fill=self.color)
 
         # draw start and end
-        draw.text((0, 10), time_text(self.seek), fill=self.color, font=self.font, anchor='lb')
-        draw.text((120, 10), time_text(self.duration), fill=self.color, font=self.font, anchor='rb')
+        draw.text((1, 11), time_text(self.seek), fill=self.color, font=self.font, anchor='lb')
+        draw.text((120, 11), time_text(self.duration), fill=self.color, font=self.font, anchor='rb')
 
     def draw(self, image, y):
         area = self.image.crop((0, 0, 120, 12))
@@ -176,7 +176,7 @@ class Display:
 
         self.title.text('Verbinden')
         self.artist.text('met Volumio')
-        self.album.text('... ... ...')
+        self.album.text('')
         self.progress.set(seek=69, duration=420)
 
         while True:
