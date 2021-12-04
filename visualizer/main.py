@@ -52,7 +52,10 @@ class TextRender:
                 self.x = 0
 
 # Bar renderer
-def time_text(seek):
+def time_text(seek, inf=False):
+    if inf and seek == 0:
+        return '→'
+
     seconds = seek
     minutes = floor(seconds / 60)
     seconds -= minutes * 60
@@ -72,8 +75,8 @@ class Progress:
         self.duration = 0
     
     def set(self, seek=None, duration=None):
-        self.seek = seek or self.seek
-        self.duration = duration or self.duration
+        if seek is not None: self.seek = seek
+        if duration is not None: self.duration = duration
 
         self.image = Image.new('RGB', (120, 12), 'black')
         draw = ImageDraw.Draw(self.image)
@@ -82,14 +85,14 @@ class Progress:
         if self.duration > 0:
             progress = (self.seek / self.duration)
         else:
-            progress = 0
+            progress = 1
 
         width = int(120 * progress)
         draw.line(((0, 10), (width, 10)), width=2, fill=self.color)
 
         # draw start and end
         draw.text((1, 11), time_text(self.seek), fill=self.color, font=self.font, anchor='lb')
-        draw.text((120, 11), time_text(self.duration), fill=self.color, font=self.font, anchor='rb')
+        draw.text((120, 11), time_text(self.duration, True), fill=self.color, font=self.font, anchor='rb')
 
     def draw(self, image, y):
         area = self.image.crop((0, 0, 120, 12))
