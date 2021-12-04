@@ -8,6 +8,7 @@ WorkingDirectory=/home/djo/muzieksysteem/mqtt
 ExecStart=/usr/bin/python3 /home/djo/muzieksysteem/mqtt/vol-to-mqtt.py
 Restart=always
 RestartSec=10
+User=djo
 
 [Install]
 WantedBy=multi-user.target
