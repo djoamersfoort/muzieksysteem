@@ -22,7 +22,7 @@ class TextRender:
         self.width = 120
 
         if self.scroll:
-            text += '  '
+            text += '    '
             w, h = self.font.getsize(text)
             self.width += w
 
