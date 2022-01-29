@@ -3,7 +3,7 @@ import paho.mqtt.client as mqtt
 from sys import stdout
 from math import floor
 import numpy as np
-import time
+
 
 # Render scrolling text
 class TextRender:
@@ -30,7 +30,7 @@ class TextRender:
 
         self.image = Image.new('RGB', (self.width, h), 'black')
         draw = ImageDraw.Draw(self.image)
-        
+
         if self.scroll:
             # draw left half
             draw.text((0, 0), text, fill=self.color, anchor='lt', font=self.font)
@@ -51,6 +51,7 @@ class TextRender:
             if self.x >= self.width - 120:
                 self.x = 0
 
+
 # Bar renderer
 def time_text(seek, inf=False):
     if inf and seek == 0:
@@ -63,8 +64,9 @@ def time_text(seek, inf=False):
     p_text = str(minutes)
     p_text += ':' + ('0' if seconds < 10 else '')
     p_text += str(seconds)
-    
+
     return p_text
+
 
 class Progress:
     def __init__(self, uri, color):
@@ -73,7 +75,7 @@ class Progress:
 
         self.seek = 0
         self.duration = 0
-    
+
     def set(self, seek=None, duration=None):
         if seek is not None: self.seek = seek
         if duration is not None: self.duration = duration
@@ -96,7 +98,8 @@ class Progress:
 
     def draw(self, image, y):
         area = self.image.crop((0, 0, 120, 12))
-        image.paste(area, (0, y))      
+        image.paste(area, (0, y))
+
 
 # MQTT Connection
 class Volumio:
@@ -115,6 +118,7 @@ class Volumio:
         self.client.subscribe('djo/player/duration')
         self.client.subscribe('bitlair/state/djo')
 
+
 # Decoder
 class Encode:
     def output(self, image):
@@ -125,18 +129,23 @@ class Encode:
         data = np.delete(data, np.arange(2, data.size, 3))
 
         # [0, 255, 255, 0] -> '0110'
-        b = ''.join(map(lambda l: str(min(l, 1)), data))
+        data = np.where(data > 1, 1, data)
+        b = ''.join([str(i) for i in data])
+
         # '0110110011011001' -> ['01101100', '11011001']
-        b = [b[i:i+8] for i in range(0, len(b), 8)]
+        size = len(b)
+        b = [b[i:i+8] for i in range(0, size, 8)]
 
         barr = bytearray(b':00')
-        barr.extend(map(lambda l: int(l, 2), b))
+        barr.extend([int(i, 2) for i in b])
         barr.append(0)
 
         stdout.buffer.write(barr)
 
+
 # Main Display class
 terminus = './font/TerminusTTF-4.49.1.ttf'
+
 
 class Display:
     def __init__(self):
@@ -165,7 +174,7 @@ class Display:
             self.progress.set(duration=int(payload))
         if topic == 'djo':
             self.state = payload == 'open'
-    
+
     def exiting(self):
         font = ImageFont.truetype(terminus, size=18)
         image = Image.new('RGB', (120, 48), 'black')
@@ -183,15 +192,15 @@ class Display:
         self.progress.set(seek=69, duration=420)
 
         while True:
-            if self.state == True:
+            if self.state:
                 self.frame()
                 self.has_drawn = True
-            elif self.state == False:
+            elif not self.state:
                 if self.has_drawn:
                     self.exiting()
                 exit(0)
             # time.sleep(0.05)
-        
+
     def frame(self):
         self.title.draw(self.image, 0)
         self.artist.draw(self.image, 12)
@@ -199,6 +208,7 @@ class Display:
         self.progress.draw(self.image, 36)
 
         self.encoder.output(self.image)
+
 
 if __name__ == '__main__':
     disp = Display()
