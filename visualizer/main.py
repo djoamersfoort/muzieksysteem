@@ -103,7 +103,7 @@ class Progress:
 
 
 # MQTT Connection
-class Volumio:
+class Mopidy:
     def __init__(self, handle):
         self.client = mqtt.Client()
         self.client.on_message = handle
@@ -153,7 +153,7 @@ class Display:
         self.image = Image.new('RGB', (120, 48))
 
         self.encoder = Encode()
-        self.mqtt = Volumio(self.message)
+        self.mqtt = Mopidy(self.message)
         self.has_drawn = False
         self.state = None
 
@@ -172,7 +172,7 @@ class Display:
         if topic == 'seek':
             self.progress.set(seek=int(int(payload) / 1000))
         if topic == 'duration':
-            self.progress.set(duration=int(payload))
+            self.progress.set(duration=int(int(payload) / 1000))
         if topic == 'djo':
             self.state = payload == 'open'
 
@@ -200,8 +200,8 @@ class Display:
                 if self.has_drawn:
                     self.exiting()
                 exit(0)
-            else:
-                time.sleep(1)
+
+            time.sleep(.02)
 
     def frame(self):
         self.title.draw(self.image, 0)

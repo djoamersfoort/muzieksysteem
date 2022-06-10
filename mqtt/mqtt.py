@@ -1,6 +1,4 @@
-from fileinput import close
-from platform import release
-from numpy import isin
+from time import sleep
 import paho.mqtt.client as mqtt
 import websocket
 import json
@@ -30,7 +28,7 @@ class Config:
         self.ws_host = 'ws://100.64.0.157/mopidy/ws'
         self.mqtt_host = 'mqtt.bitlair.nl'
         self.mqtt_port = 1883
-        self.mqtt_name = 'DJO_Mopidy_to_MQTT'
+        self.mqtt_name = 'djo/player'
 
 # class for the MQTT proxy client
 class Proxy:
@@ -55,26 +53,43 @@ class Proxy:
         self.mqtt_client.connect(self.config.mqtt_host, self.config.mqtt_port)
 
         self.ws_client.run_forever(dispatcher=rel)
+        self.get_seek()
+        
         rel.signal(2, rel.abort)
         rel.dispatch()
 
-    def publish(self, key, value):
+
+    def publish(self, key, value, retain=True):
         if self.state[key] != value and value is not None:
             envelope = self.config.mqtt_name + '/' + key
             print("{} changed, will send '{}' to {}".format(key, value, envelope))
-            self.mqtt_client.publish(envelope, payload=value, retain=True)
+            self.mqtt_client.publish(envelope, payload=value, retain=retain)
             self.state[key] = value
+    
+    def get_seek(self):
+        self.ws_client.send(json.dumps({
+            'jsonrpc': '2.0',
+            'id': 1,
+            'method': 'core.playback.get_time_position'
+        }))
 
     def on_message(self, ws, message):
         data = json.loads(message)
 
+        # get playback status from events
         self.publish('volume',      get_key(data, 'volume'))
-        self.publish('seek',        get_key(data, 'time_position'))
         self.publish('status',      get_key(data, 'new_state'))
         self.publish('title',       get_key(data, 'tl_track', 'track', 'name'))
         self.publish('duration',    get_key(data, 'tl_track', 'track', 'length'))
         self.publish('album',       get_key(data, 'tl_track', 'track', 'album', 'name'))
         self.publish('artist',      get_key(data, 'tl_track', 'track', 'artists', 0, 'name'))
+
+        # get playback position from events
+        if data.get('id', None) == 1:
+            self.publish('seek', get_key(data, 'result'))
+            sleep(1)
+            self.get_seek()
+
 
 if __name__ == '__main__':
     config = Config()
