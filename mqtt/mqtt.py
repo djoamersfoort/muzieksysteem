@@ -1,6 +1,6 @@
-from time import sleep
 import paho.mqtt.client as mqtt
 import websocket
+import time
 import json
 import rel
 
@@ -51,10 +51,10 @@ class Proxy:
     # connect to the client
     def connect(self):
         self.mqtt_client.connect(self.config.mqtt_host, self.config.mqtt_port)
-
         self.ws_client.run_forever(dispatcher=rel)
         self.get_seek()
         
+        # infinite loop
         rel.signal(2, rel.abort)
         rel.dispatch()
 
@@ -67,6 +67,7 @@ class Proxy:
             self.state[key] = value
     
     def get_seek(self):
+        self.last_seek = time.time()
         self.ws_client.send(json.dumps({
             'jsonrpc': '2.0',
             'id': 1,
@@ -87,7 +88,8 @@ class Proxy:
         # get playback position from events
         if data.get('id', None) == 1:
             self.publish('seek', get_key(data, 'result'))
-            sleep(1)
+            dt = time.time() - self.last_seek
+            time.sleep(1 - dt / 1000)
             self.get_seek()
 
 
