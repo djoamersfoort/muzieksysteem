@@ -3,6 +3,7 @@ import paho.mqtt.client as mqtt
 from sys import stdout
 from math import floor
 import numpy as np
+import time
 
 
 # Render scrolling text
@@ -187,7 +188,7 @@ class Display:
         self.mqtt.connect('mqtt.bitlair.nl')
 
         self.title.text('Verbinden')
-        self.artist.text('met Volumio')
+        self.artist.text('met Mopidy')
         self.album.text('')
         self.progress.set(seek=69, duration=420)
 
@@ -195,11 +196,12 @@ class Display:
             if self.state:
                 self.frame()
                 self.has_drawn = True
-            elif not self.state:
+            elif self.state == False:
                 if self.has_drawn:
                     self.exiting()
                 exit(0)
-            # time.sleep(0.05)
+            else:
+                time.sleep(1)
 
     def frame(self):
         self.title.draw(self.image, 0)
