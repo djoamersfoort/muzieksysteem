@@ -5,7 +5,6 @@ from math import floor
 import numpy as np
 import time
 
-
 # Render scrolling text
 class TextRender:
     def __init__(self, uri, size, color):
@@ -46,7 +45,7 @@ class TextRender:
         area = self.image.crop((self.x, 0, self.width, self.height))
         image.paste(area, (0, y))
 
-        # scroll forward if applicable        
+        # scroll forward if applicable
         if self.scroll:
             self.x += 1
             if self.x >= self.width - 120:
@@ -54,11 +53,13 @@ class TextRender:
 
 
 # Bar renderer
-def time_text(seek, inf=False):
-    if inf and seek == 0:
+def time_text(time, inf=False, status=None):
+    if status == False:
+        return '||'
+    if inf and time == 0:
         return '→'
 
-    seconds = seek
+    seconds = time
     minutes = floor(seconds / 60)
     seconds -= minutes * 60
 
@@ -77,7 +78,7 @@ class Progress:
         self.seek = 0
         self.duration = 0
 
-    def set(self, seek=None, duration=None):
+    def set(self, seek=None, duration=None, status=None):
         if seek is not None: self.seek = seek
         if duration is not None: self.duration = duration
 
@@ -94,8 +95,8 @@ class Progress:
         draw.line(((0, 10), (width, 10)), width=2, fill=self.color)
 
         # draw start and end
-        draw.text((1, 11), time_text(self.seek), fill=self.color, font=self.font, anchor='lb')
-        draw.text((120, 11), time_text(self.duration, True), fill=self.color, font=self.font, anchor='rb')
+        draw.text((1, 11), time_text(self.seek, status=status), fill=self.color, font=self.font, anchor='lb')
+        draw.text((120, 11), time_text(self.duration, inf=True), fill=self.color, font=self.font, anchor='rb')
 
     def draw(self, image, y):
         area = self.image.crop((0, 0, 120, 12))
@@ -117,6 +118,7 @@ class Mopidy:
         self.client.subscribe('djo/player/album')
         self.client.subscribe('djo/player/seek')
         self.client.subscribe('djo/player/duration')
+        self.client.subscribe('djo/player/status')
         self.client.subscribe('bitlair/state/djo')
 
 
@@ -156,6 +158,7 @@ class Display:
         self.mqtt = Mopidy(self.message)
         self.has_drawn = False
         self.state = None
+        self.status = False
 
         self.title = TextRender(terminus, 12, 'orange')
         self.artist = TextRender(terminus, 12, 'green')
@@ -169,10 +172,12 @@ class Display:
         if topic in ['title', 'artist', 'album']:
             getattr(self, topic).text(payload)
 
+        if topic == 'status':
+            self.status = payload == 'playing'
         if topic == 'seek':
             self.progress.set(seek=int(int(payload) / 1000))
         if topic == 'duration':
-            self.progress.set(duration=int(int(payload) / 1000))
+            self.progress.set(duration=int(int(payload) / 1000), status=self.status)
         if topic == 'djo':
             self.state = payload == 'open'
 
