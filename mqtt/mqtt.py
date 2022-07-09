@@ -50,8 +50,7 @@ class Proxy:
         # websocket.enableTrace(True)
         self.mqtt_client = mqtt.Client(self.config.mqtt_name)
         self.ws_client = websocket.WebSocketApp(
-            self.config.ws_host, on_message=self.on_message)
-
+            self.config.ws_host, on_message=self.on_message, on_close=rel.abort)
 
     # connect to the client
     def connect(self):

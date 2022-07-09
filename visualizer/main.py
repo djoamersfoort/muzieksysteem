@@ -175,9 +175,9 @@ class Display:
         if topic == 'status':
             self.status = payload == 'playing'
         if topic == 'seek':
-            self.progress.set(seek=int(int(payload) / 1000))
+            self.progress.set(seek=int(int(payload) / 1000), status=self.status)
         if topic == 'duration':
-            self.progress.set(duration=int(int(payload) / 1000), status=self.status)
+            self.progress.set(duration=int(int(payload) / 1000))
         if topic == 'djo':
             self.state = payload == 'open'
 
