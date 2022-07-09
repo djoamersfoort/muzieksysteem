@@ -2,12 +2,13 @@
 Description=Visualizer
 After=network.target
 Wants=network.target
+StartLimitBurst=0
 
 [Service]
 WorkingDirectory=/home/djo/muzieksysteem/visualizer
 ExecStart=/usr/bin/bash /home/djo/muzieksysteem/visualizer/run.sh
 Restart=always
-RestartSec=60
+RestartSec=35
 User=djo
 
 [Install]

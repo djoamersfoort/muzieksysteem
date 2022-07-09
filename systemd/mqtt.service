@@ -2,6 +2,7 @@
 Description=MQTT
 After=network.target
 Wants=network.target
+StartLimitBurst=0
 
 [Service]
 WorkingDirectory=/home/djo/muzieksysteem/mqtt
